@@ -763,14 +763,15 @@ async function fetchJpRound(round) {
 async function loadJpResults() {
   const el = document.getElementById('jp-results');
   try {
-    // 최신 회차 추정: 로또6는 2000년 10월부터 주 2회 (월·목)
-    const firstDraw = new Date(2000, 9, 5);
-    const weeksElapsed = (new Date() - firstDraw) / (7 * 24 * 60 * 60 * 1000);
-    const estimated = Math.floor(weeksElapsed * 2) + 1;
+    // 최신 회차 추정: 기준점 사용 (2026-03-09 = 2083회)
+    const refDate = new Date(2026, 2, 9);
+    const refRound = 2083;
+    const daysElapsed = (new Date() - refDate) / (24 * 60 * 60 * 1000);
+    const estimated = Math.round(refRound + daysElapsed * 0.224);
 
-    // 최신 회차 확인
+    // 최신 회차 확인 (±20 범위 탐색)
     let latest = null;
-    for (let n = estimated + 5; n >= estimated - 10; n--) {
+    for (let n = estimated + 5; n >= estimated - 20; n--) {
       const d = await fetchJpRound(n);
       if (d) { latest = n; break; }
     }
