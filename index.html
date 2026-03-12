@@ -322,8 +322,8 @@
     <div class="country-card">
       <div class="country-header">
         <span class="country-flag">🇯🇵</span>
-        <div><div class="country-name">일본 로또6 (ロト6)</div><div class="country-sub">宝くじ · 월·목요일</div></div>
-        <span class="country-badge">6/43</span>
+        <div><div class="country-name">일본 로또6 (ロト6)</div><div class="country-sub">宝くじ · 로또6 기준 · 월·목요일 추첨</div></div>
+        <span class="country-badge">로또6 / 6/43</span>
       </div>
       <div id="jp-results"><div class="loading-msg">버튼을 눌러 불러오기</div></div>
     </div>
@@ -705,40 +705,83 @@ async function loadUsResults(){
   }
 }
 
-// 일본 로또6
-async function loadJpResults(){
-  const el=document.getElementById('jp-results');
-  try{
-    const res=await fetch(PROXY('https://www.mizuhobank.co.jp/retail/takarakuji/loto/loto6/index.html'));
-    if(!res.ok)throw new Error();
-    const data=await res.json();
-    const html=data.contents||'';
-    // 당첨번호는 보통 <td class="num">형식으로 표시됨
-    const numRegex=/<td[^>]*class="[^"]*num[^"]*"[^>]*>\s*(\d{1,2})\s*<\/td>/g;
-    const allNums=[]; let m;
-    while((m=numRegex.exec(html))!==null) allNums.push(parseInt(m[1]));
-    // 회차/날짜 파싱
-    const roundMatch=html.match(/第(\d+)回/);
-    const dateMatch=html.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/g);
-    if(allNums.length<6)throw new Error('parse');
-    el.innerHTML='';
-    // 최대 5회차치 데이터 표시 (7개씩: 6본번호+1보너스)
-    const sets=[]; for(let i=0;i+6<=allNums.length;i+=7){if(i+6<allNums.length)sets.push({main:allNums.slice(i,i+6).sort((a,b)=>a-b),bonus:allNums[i+6]});}
-    if(!sets.length&&allNums.length>=6)sets.push({main:allNums.slice(0,6).sort((a,b)=>a-b),bonus:allNums[6]||null});
-    sets.slice(0,5).forEach((s,idx)=>{
-      const row=document.createElement('div'); row.className='result-row';
-      const meta=document.createElement('div'); meta.className='result-meta';
-      const roundNum=roundMatch?parseInt(roundMatch[1])-idx:'';
-      const dateStr=dateMatch&&dateMatch[idx]?dateMatch[idx].replace(/年|月/g,'-').replace('日',''):'';
-      meta.innerHTML=`<span class="result-round">${roundNum?'第'+roundNum+'回':'로또6'}</span><span class="result-date">${dateStr}</span>`;
-      const nums=document.createElement('div'); nums.className='result-nums';
-      s.main.forEach(n=>{const b=document.createElement('div');b.className='ball xs';const cls=ballClass(n);b.style.background=COLORS[cls];b.style.color=TEXT_COLORS[cls];b.textContent=n;nums.appendChild(b);});
-      if(s.bonus){nums.appendChild(makeSep());const bb=document.createElement('div');bb.className='ball xs';bb.style.background='linear-gradient(135deg,#ff9900,#cc6600)';bb.style.color='#fff';bb.textContent=s.bonus;nums.appendChild(bb);}
+// 일본 로또6 — Cloudflare Worker 프록시로 Mizuho Bank CSV 조회
+const JP_WORKER = 'https://loto6-proxy.ryanparkai81.workers.dev/';
+
+function parseJpWareki(dateStr) {
+  // 令和N年M月D日 → YYYY-MM-DD
+  const m = dateStr.match(/令和(\d+)年(\d+)月(\d+)日/);
+  if (!m) return dateStr;
+  const year = 2018 + parseInt(m[1]);
+  return `${year}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+
+async function fetchJpRound(round) {
+  try {
+    const res = await fetch(`${JP_WORKER}?round=${round}`);
+    if (!res.ok) return null;
+    const text = await res.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    // 헤더 라인: 第XXXX回ロト６,…,令和N年M月D日,…
+    const headerLine = lines.find(l => l.includes('回ロト'));
+    // 본번호 라인: 本数字,01,02,...,ボーナス数字,XX
+    const numLine = lines.find(l => l.startsWith('本数字'));
+    if (!headerLine || !numLine) return null;
+    const roundMatch = headerLine.match(/第(\d+)回/);
+    const dateMatch = headerLine.match(/令和\d+年\d+月\d+日/);
+    const parts = numLine.split(',');
+    const bonusIdx = parts.indexOf('ボーナス数字');
+    if (bonusIdx === -1) return null;
+    const main = parts.slice(1, bonusIdx).map(Number).sort((a,b)=>a-b);
+    const bonus = parseInt(parts[bonusIdx + 1]);
+    return {
+      round: roundMatch ? parseInt(roundMatch[1]) : round,
+      date: dateMatch ? parseJpWareki(dateMatch[0]) : '',
+      numbers: main,
+      bonus
+    };
+  } catch { return null; }
+}
+
+async function loadJpResults() {
+  const el = document.getElementById('jp-results');
+  try {
+    // 최신 회차 추정: 로또6는 2000년 10월부터 주 2회 (월·목)
+    const firstDraw = new Date(2000, 9, 5);
+    const weeksElapsed = (new Date() - firstDraw) / (7 * 24 * 60 * 60 * 1000);
+    const estimated = Math.floor(weeksElapsed * 2) + 1;
+
+    // 최신 회차 확인
+    let latest = null;
+    for (let n = estimated + 5; n >= estimated - 10; n--) {
+      const d = await fetchJpRound(n);
+      if (d) { latest = n; break; }
+    }
+    if (!latest) throw new Error('latest not found');
+
+    const results = await Promise.all([0,1,2,3,4].map(i => fetchJpRound(latest - i)));
+    const valid = results.filter(Boolean);
+    if (!valid.length) throw new Error('no results');
+
+    el.innerHTML = '';
+    valid.forEach(r => {
+      const row = document.createElement('div'); row.className = 'result-row';
+      const meta = document.createElement('div'); meta.className = 'result-meta';
+      meta.innerHTML = `<span class="result-round">第${r.round}回 ロト6</span><span class="result-date">${r.date}</span>`;
+      const nums = document.createElement('div'); nums.className = 'result-nums';
+      r.numbers.forEach(n => {
+        const b = document.createElement('div'); b.className = 'ball xs';
+        const cls = ballClass(n); b.style.background = COLORS[cls]; b.style.color = TEXT_COLORS[cls];
+        b.textContent = n; nums.appendChild(b);
+      });
+      nums.appendChild(makeSep());
+      const bb = document.createElement('div'); bb.className = 'ball xs';
+      bb.style.background = 'linear-gradient(135deg,#ff9900,#cc6600)'; bb.style.color = '#fff';
+      bb.textContent = r.bonus; nums.appendChild(bb);
       row.appendChild(meta); row.appendChild(nums); el.appendChild(row);
     });
-    if(!el.children.length)throw new Error('empty');
-  }catch{
-    el.innerHTML='<div class="error-msg">일본 로또6 데이터를 불러올 수 없습니다. <a href="https://www.takarakuji-official.jp/loto/loto6/" target="_blank" rel="noopener">공식 사이트 방문 →</a></div>';
+  } catch {
+    el.innerHTML = '<div class="error-msg">일본 로또6 데이터를 불러올 수 없습니다. <a href="https://www.mizuhobank.co.jp/takarakuji/check/loto/loto6/index.html" target="_blank" rel="noopener">공식 사이트 방문 →</a></div>';
   }
 }
 
