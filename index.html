@@ -1,24 +1,768 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Builder</title>
-  <link href='/style.css' rel='stylesheet'>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>로또 번호 추천</title>
+  <style>
+    :root {
+      --bg: #0a0a14;
+      --card: #13131f;
+      --card2: #1a1a2e;
+      --border: #2a2a40;
+      --accent: #ffd700;
+      --text: #e0e0f0;
+      --dim: #555570;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      padding: 32px 16px 80px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* ── HEADER ── */
+    header { text-align:center; margin-bottom: 40px; }
+    header h1 { font-size: 2rem; font-weight:900; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--dim); font-size:0.88rem; margin-top:6px; }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 6px;
+      margin-bottom: 28px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--dim);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active { background: var(--accent); color: #111; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 18px;
+    }
+
+    /* ── BALLS ── */
+    .balls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .ball {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items:center; justify-content:center;
+      font-size: 1.1rem; font-weight: 800;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+    .ball.sm { width:38px; height:38px; font-size:0.85rem; }
+    .ball.hit { box-shadow: 0 0 0 3px #fff, 0 0 12px rgba(255,215,0,0.7); }
+    .ball.bonus-hit { box-shadow: 0 0 0 3px #ff9900, 0 0 12px rgba(255,153,0,0.7); }
+    .b1 { background:linear-gradient(135deg,#f7e200,#e6b800); color:#333; }
+    .b2 { background:linear-gradient(135deg,#69b4ff,#3385e6); color:#fff; }
+    .b3 { background:linear-gradient(135deg,#ff6b6b,#d93636); color:#fff; }
+    .b4 { background:linear-gradient(135deg,#aaa,#666);       color:#fff; }
+    .b5 { background:linear-gradient(135deg,#6dde8a,#2bab50); color:#fff; }
+    .ball.dim-ball { background:#222; color:#555; }
+
+    .sep { color:#333; font-size:1.2rem; }
+
+    @keyframes pop {
+      from { transform:scale(0); }
+      to   { transform:scale(1); }
+    }
+    .anim { transform:scale(0); animation: pop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* ── GENERATE BTN ── */
+    .gen-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg,#ffd700,#ffaa00);
+      color: #111;
+      font-size: 1rem;
+      font-weight: 900;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.15s, transform 0.15s;
+      margin-bottom: 20px;
+    }
+    .gen-btn:hover  { opacity:0.9; transform:translateY(-1px); }
+    .gen-btn:active { transform:scale(0.98); }
+
+    /* ── WEEK SELECTOR ── */
+    .week-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .week-bar label { font-size:0.85rem; color:var(--dim); }
+    .week-bar input[type=date] {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+    }
+    .week-bar select {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+      flex:1;
+    }
+
+    /* ── PICKS LIST ── */
+    .picks-list { display:flex; flex-direction:column; gap:10px; }
+    .pick-row {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pick-row .pick-label {
+      font-size:0.72rem;
+      color:var(--dim);
+      width:32px;
+      flex-shrink:0;
+    }
+    .pick-row .prize-badge {
+      margin-left: auto;
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .prize-1  { background:#ff4b4b22; color:#ff6b6b; border:1px solid #ff4b4b55; }
+    .prize-2  { background:#ff990022; color:#ffaa00; border:1px solid #ff990055; }
+    .prize-3  { background:#ffd70022; color:#ffd700; border:1px solid #ffd70055; }
+    .prize-4  { background:#69b4ff22; color:#69b4ff; border:1px solid #69b4ff55; }
+    .prize-5  { background:#6dde8a22; color:#6dde8a; border:1px solid #6dde8a55; }
+    .prize-no { background:#22222244; color:#555;    border:1px solid #33333355; }
+
+    /* ── WINNING INPUT ── */
+    .win-input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .win-input-row input {
+      width: 52px; height:46px;
+      text-align:center;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .win-input-row input:focus { outline:none; border-color:#ffd700; }
+    .win-input-row .bonus-input {
+      border-color: #ff9900;
+    }
+    .win-input-row .bonus-label {
+      display:flex; align-items:center;
+      font-size:0.75rem; color:#ff9900;
+    }
+    .confirm-btn {
+      width:100%;
+      padding:13px;
+      background: linear-gradient(135deg,#6c63ff,#9d59e8);
+      color:#fff;
+      font-size:0.95rem;
+      font-weight:800;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      transition:opacity 0.15s;
+    }
+    .confirm-btn:hover { opacity:0.88; }
+    .confirm-btn:disabled { opacity:0.3; cursor:default; }
+
+    /* ── STATS ── */
+    .stats-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .stats-total { font-size:0.82rem; color:var(--dim); }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+    }
+    .stat-cell {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 6px;
+      text-align:center;
+    }
+    .stat-cell .snum {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .stat-cell .scount {
+      font-size: 0.72rem;
+      color: var(--dim);
+    }
+    .stat-cell .sbar-wrap {
+      margin-top: 5px;
+      height: 4px;
+      background: #222;
+      border-radius: 2px;
+      overflow:hidden;
+    }
+    .stat-cell .sbar {
+      height:100%;
+      border-radius:2px;
+      transition: width 0.6s ease;
+    }
+
+    /* ── WEEKS LIST ── */
+    .week-list { display:flex; flex-direction:column; gap:12px; }
+    .week-card {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius:14px;
+      padding:16px;
+      cursor:pointer;
+      transition:border-color 0.2s;
+    }
+    .week-card:hover { border-color:#ffd70055; }
+    .week-card.selected { border-color:#ffd700; }
+    .week-card-top {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+    }
+    .week-date { font-size:0.85rem; font-weight:700; }
+    .week-status {
+      font-size:0.75rem;
+      padding:3px 10px;
+      border-radius:20px;
+    }
+    .st-pending { background:#33333355; color:#888; border:1px solid #333; }
+    .st-done    { background:#ffd70022; color:#ffd700; border:1px solid #ffd70055; }
+
+    .empty-msg { color:var(--dim); text-align:center; padding:32px; font-size:0.9rem; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:500px) {
+      .ball { width:42px; height:42px; font-size:0.95rem; }
+      .ball.sm { width:32px; height:32px; font-size:0.75rem; }
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Product Builder</h1>
-      <button id="theme-toggle" onclick="toggleTheme()" aria-label="테마 전환">
-        <span id="theme-icon">🌙</span>
-        <span id="theme-label">다크 모드</span>
-      </button>
-    </header>
-    <main>
-      <p>환영합니다! 우측 상단 버튼으로 다크/화이트 모드를 전환하세요.</p>
-    </main>
+
+<header>
+  <h1>🍀 <span>LOTTO</span> PICKER</h1>
+  <p>번호 생성 · 주차별 저장 · 당첨 비교 · 통계 분석</p>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('generate')">🎰 번호 생성</button>
+  <button class="tab" onclick="switchTab('history')">📋 주차 관리</button>
+  <button class="tab" onclick="switchTab('stats')">📊 통계</button>
+</div>
+
+<!-- ══════════════ TAB 1: 번호 생성 ══════════════ -->
+<div class="panel active" id="tab-generate">
+
+  <div class="week-bar">
+    <label>추첨 주차</label>
+    <input type="date" id="weekDate"/>
+    <button class="gen-btn" style="margin:0;width:auto;padding:8px 20px;font-size:0.88rem;" onclick="addPick()">+ 번호 추가 (최대5)</button>
   </div>
-  <script defer type="text/javascript" src="/main.js"></script>
+
+  <div class="card">
+    <div class="card-title">이번 주 추천 번호</div>
+    <div class="picks-list" id="currentPicks">
+      <div class="empty-msg">아직 생성된 번호가 없습니다</div>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="saveWeek()">💾 이 주차 저장</button>
+
+</div>
+
+<!-- ══════════════ TAB 2: 주차 관리 ══════════════ -->
+<div class="panel" id="tab-history">
+
+  <div class="week-list" id="weekList">
+    <div class="empty-msg">저장된 주차가 없습니다</div>
+  </div>
+
+  <!-- 당첨 번호 입력 패널 (선택된 주차) -->
+  <div class="card" id="winPanel" style="display:none;margin-top:20px;">
+    <div class="card-title">당첨 번호 입력 — <span id="winPanelDate"></span></div>
+
+    <div class="win-input-row" id="winInputs">
+      <input type="number" min="1" max="45" placeholder="1" id="w1"/>
+      <input type="number" min="1" max="45" placeholder="2" id="w2"/>
+      <input type="number" min="1" max="45" placeholder="3" id="w3"/>
+      <input type="number" min="1" max="45" placeholder="4" id="w4"/>
+      <input type="number" min="1" max="45" placeholder="5" id="w5"/>
+      <input type="number" min="1" max="45" placeholder="6" id="w6"/>
+      <span class="bonus-label">+보너스</span>
+      <input type="number" min="1" max="45" placeholder="보너스" id="wb" class="bonus-input"/>
+    </div>
+
+    <button class="confirm-btn" onclick="confirmWinning()">✅ 당첨 번호 확정 및 비교</button>
+
+    <!-- 비교 결과 -->
+    <div id="compareResult" style="margin-top:20px;"></div>
+  </div>
+
+</div>
+
+<!-- ══════════════ TAB 3: 통계 ══════════════ -->
+<div class="panel" id="tab-stats">
+  <div class="card">
+    <div class="stats-header">
+      <div class="card-title" style="margin:0">번호별 당첨 횟수 (실제 당첨 번호 기준)</div>
+      <div class="stats-total" id="statsTotalRounds"></div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  STATE  (in-memory, persists via re-render)
+// ══════════════════════════════════════
+let state = {
+  currentWeekDate: '',
+  currentPicks: [],      // [{main:[],bonus}]
+  weeks: []              // [{date, picks:[{main,bonus}], winning:{main[],bonus}|null}]
+};
+
+// ── UTILS ──
+function ballClass(n){
+  if(n<=10) return 'b1';
+  if(n<=20) return 'b2';
+  if(n<=30) return 'b3';
+  if(n<=40) return 'b4';
+  return 'b5';
+}
+function makeBall(n, sm, extraClass='', animated=false){
+  const d = document.createElement('div');
+  let cls = 'ball ' + ballClass(n) + (sm?' sm':'') + (extraClass?' '+extraClass:'') + (animated?' anim':'');
+  d.className = cls;
+  d.textContent = n;
+  return d;
+}
+function makeSep(){
+  const s=document.createElement('span');
+  s.className='sep'; s.textContent='+'; return s;
+}
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function randomPick(){
+  const pool=Array.from({length:45},(_,i)=>i+1);
+  const s=shuffle(pool);
+  const main=s.slice(0,6).sort((a,b)=>a-b);
+  const bonus=s[6];
+  return {main,bonus};
+}
+function todaySaturday(){
+  const d=new Date();
+  const day=d.getDay();
+  const diff=(6-day+7)%7;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().split('T')[0];
+}
+function prizeLabel(matchMain, matchBonus){
+  if(matchMain===6) return {text:'🏆 1등',cls:'prize-1'};
+  if(matchMain===5&&matchBonus) return {text:'🥈 2등',cls:'prize-2'};
+  if(matchMain===5) return {text:'🥉 3등',cls:'prize-3'};
+  if(matchMain===4) return {text:'4등',cls:'prize-4'};
+  if(matchMain===3) return {text:'5등',cls:'prize-5'};
+  return {text:'낙첨',cls:'prize-no'};
+}
+
+// ── INIT ──
+(function init(){
+  const d = document.getElementById('weekDate');
+  d.value = todaySaturday();
+  state.currentWeekDate = d.value;
+  d.addEventListener('change', ()=>{ state.currentWeekDate=d.value; });
+  renderCurrentPicks();
+  renderWeekList();
+  renderStats();
+})();
+
+// ── TAB ──
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['generate','history','stats'];
+    t.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach((p,i)=>{
+    const names=['generate','history','stats'];
+    p.classList.toggle('active', names[i]===name);
+  });
+  if(name==='stats') renderStats();
+  if(name==='history') renderWeekList();
+}
+
+// ══════════════════════════════════════
+//  TAB 1 : 번호 생성
+// ══════════════════════════════════════
+function addPick(){
+  if(state.currentPicks.length>=5){
+    alert('주차당 최대 5개 번호를 저장할 수 있습니다.');
+    return;
+  }
+  state.currentPicks.push(randomPick());
+  renderCurrentPicks();
+}
+
+function removePick(idx){
+  state.currentPicks.splice(idx,1);
+  renderCurrentPicks();
+}
+
+function renderCurrentPicks(){
+  const el=document.getElementById('currentPicks');
+  if(state.currentPicks.length===0){
+    el.innerHTML='<div class="empty-msg">아직 생성된 번호가 없습니다</div>';
+    return;
+  }
+  el.innerHTML='';
+  state.currentPicks.forEach((p,i)=>{
+    const row=document.createElement('div');
+    row.className='pick-row';
+
+    const lbl=document.createElement('span');
+    lbl.className='pick-label'; lbl.textContent='#'+(i+1);
+    row.appendChild(lbl);
+
+    p.main.forEach((n,ni)=>{
+      row.appendChild(makeBall(n,true,'',ni===0));
+    });
+    row.appendChild(makeSep());
+    row.appendChild(makeBall(p.bonus,true));
+
+    const del=document.createElement('button');
+    del.textContent='×';
+    del.style.cssText='margin-left:auto;background:none;border:none;color:#555;font-size:1.2rem;cursor:pointer;';
+    del.onclick=()=>removePick(i);
+    row.appendChild(del);
+
+    el.appendChild(row);
+  });
+}
+
+function saveWeek(){
+  if(state.currentPicks.length===0){
+    alert('저장할 번호를 먼저 생성해 주세요.'); return;
+  }
+  const date=state.currentWeekDate||todaySaturday();
+  const exists=state.weeks.find(w=>w.date===date);
+  if(exists){
+    if(!confirm(`${date} 주차가 이미 있습니다. 덮어쓸까요?`)) return;
+    exists.picks=[...state.currentPicks];
+    exists.winning=null;
+  } else {
+    state.weeks.unshift({date, picks:[...state.currentPicks], winning:null});
+  }
+  state.currentPicks=[];
+  renderCurrentPicks();
+  alert(`✅ ${date} 주차 저장 완료!`);
+  renderWeekList();
+}
+
+// ══════════════════════════════════════
+//  TAB 2 : 주차 관리 & 당첨 비교
+// ══════════════════════════════════════
+let selectedWeekIdx = null;
+
+function renderWeekList(){
+  const el=document.getElementById('weekList');
+  if(state.weeks.length===0){
+    el.innerHTML='<div class="empty-msg">저장된 주차가 없습니다</div>';
+    document.getElementById('winPanel').style.display='none';
+    return;
+  }
+  el.innerHTML='';
+  state.weeks.forEach((w,i)=>{
+    const card=document.createElement('div');
+    card.className='week-card'+(selectedWeekIdx===i?' selected':'');
+    card.onclick=()=>selectWeek(i);
+
+    const top=document.createElement('div');
+    top.className='week-card-top';
+
+    const dt=document.createElement('span');
+    dt.className='week-date'; dt.textContent='📅 '+w.date+' 주차';
+
+    const st=document.createElement('span');
+    st.className='week-status '+(w.winning?'st-done':'st-pending');
+    st.textContent=w.winning?'당첨 확인 완료':'대기 중';
+
+    top.appendChild(dt); top.appendChild(st);
+    card.appendChild(top);
+
+    // picks preview
+    const preview=document.createElement('div');
+    preview.style.cssText='display:flex;flex-direction:column;gap:6px;';
+    w.picks.forEach((p,pi)=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;gap:5px;align-items:center;flex-wrap:wrap;';
+
+      const lbl=document.createElement('span');
+      lbl.style.cssText='font-size:0.7rem;color:#555;width:24px;';
+      lbl.textContent='#'+(pi+1);
+      row.appendChild(lbl);
+
+      p.main.forEach(n=>{
+        const b=makeBall(n,true);
+        if(w.winning){
+          if(w.winning.main.includes(n)) b.classList.add('hit');
+        }
+        row.appendChild(b);
+      });
+      row.appendChild(makeSep());
+      const bb=makeBall(p.bonus,true);
+      if(w.winning && w.winning.bonus===p.bonus) bb.classList.add('bonus-hit');
+      row.appendChild(bb);
+
+      // prize badge if winning set
+      if(w.winning){
+        const matchMain=p.main.filter(n=>w.winning.main.includes(n)).length;
+        const matchBonus=w.winning.bonus===p.bonus;
+        const {text,cls}=prizeLabel(matchMain,matchBonus);
+        const badge=document.createElement('span');
+        badge.className='prize-badge '+cls;
+        badge.textContent=text;
+        badge.style.marginLeft='auto';
+        row.appendChild(badge);
+      }
+
+      preview.appendChild(row);
+    });
+
+    // show actual winning if exists
+    if(w.winning){
+      const wrow=document.createElement('div');
+      wrow.style.cssText='display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #222;';
+      const wlbl=document.createElement('span');
+      wlbl.style.cssText='font-size:0.7rem;color:#ff9900;width:50px;flex-shrink:0;';
+      wlbl.textContent='당첨번호';
+      wrow.appendChild(wlbl);
+      w.winning.main.forEach(n=>wrow.appendChild(makeBall(n,true)));
+      wrow.appendChild(makeSep());
+      wrow.appendChild(makeBall(w.winning.bonus,true));
+      preview.appendChild(wrow);
+    }
+
+    card.appendChild(preview);
+    el.appendChild(card);
+  });
+}
+
+function selectWeek(idx){
+  selectedWeekIdx=idx;
+  renderWeekList();
+
+  const w=state.weeks[idx];
+  const panel=document.getElementById('winPanel');
+  panel.style.display='block';
+  document.getElementById('winPanelDate').textContent=w.date+' 주차';
+
+  // clear inputs
+  ['w1','w2','w3','w4','w5','w6','wb'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.value='';
+    el.disabled=false;
+  });
+  document.querySelector('.confirm-btn').disabled=false;
+  document.getElementById('compareResult').innerHTML='';
+
+  // prefill if already set
+  if(w.winning){
+    const wn=w.winning;
+    ['w1','w2','w3','w4','w5','w6'].forEach((id,i)=>{
+      document.getElementById(id).value=wn.main[i];
+    });
+    document.getElementById('wb').value=wn.bonus;
+    renderCompareResult(idx);
+  }
+
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function confirmWinning(){
+  if(selectedWeekIdx===null) return;
+  const ids=['w1','w2','w3','w4','w5','w6'];
+  const mains=ids.map(id=>parseInt(document.getElementById(id).value));
+  const bonus=parseInt(document.getElementById('wb').value);
+
+  for(const n of [...mains,bonus]){
+    if(isNaN(n)||n<1||n>45){
+      alert('1~45 사이의 유효한 숫자를 모두 입력해 주세요.'); return;
+    }
+  }
+  const unique=new Set([...mains,bonus]);
+  if(unique.size!==7){ alert('중복 번호가 있습니다. 확인해주세요.'); return; }
+
+  const sortedMain=[...mains].sort((a,b)=>a-b);
+  state.weeks[selectedWeekIdx].winning={main:sortedMain, bonus};
+  renderWeekList();
+  renderCompareResult(selectedWeekIdx);
+  renderStats();
+}
+
+function renderCompareResult(weekIdx){
+  const w=state.weeks[weekIdx];
+  if(!w.winning) return;
+
+  const el=document.getElementById('compareResult');
+  el.innerHTML='<div class="card-title" style="margin-bottom:12px;">비교 결과</div>';
+
+  w.picks.forEach((p,i)=>{
+    const matchMain=p.main.filter(n=>w.winning.main.includes(n)).length;
+    const matchBonus=w.winning.bonus===p.bonus;
+    const {text,cls}=prizeLabel(matchMain,matchBonus);
+
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;';
+
+    const lbl=document.createElement('span');
+    lbl.style.cssText='font-size:0.75rem;color:#555;width:28px;flex-shrink:0;';
+    lbl.textContent='#'+(i+1);
+    row.appendChild(lbl);
+
+    p.main.forEach(n=>{
+      const b=makeBall(n,true, w.winning.main.includes(n)?'hit':'');
+      row.appendChild(b);
+    });
+    row.appendChild(makeSep());
+    const bb=makeBall(p.bonus,true, matchBonus?'bonus-hit':'');
+    row.appendChild(bb);
+
+    const badge=document.createElement('span');
+    badge.className='prize-badge '+cls;
+    badge.textContent=text+` (${matchMain}개 일치${matchBonus?'+보너스':''})`;
+    badge.style.marginLeft='auto';
+    row.appendChild(badge);
+
+    el.appendChild(row);
+  });
+}
+
+// ══════════════════════════════════════
+//  TAB 3 : 통계
+// ══════════════════════════════════════
+function renderStats(){
+  const el=document.getElementById('statsGrid');
+  const totalEl=document.getElementById('statsTotalRounds');
+
+  // 당첨 번호가 확정된 주차만
+  const doneWeeks=state.weeks.filter(w=>w.winning);
+  totalEl.textContent=`확정된 주차: ${doneWeeks.length}회`;
+
+  // 번호별 카운트
+  const cnt=Array(46).fill(0);
+  doneWeeks.forEach(w=>{
+    w.winning.main.forEach(n=>cnt[n]++);
+    cnt[w.winning.bonus]++;
+  });
+
+  const maxCnt=Math.max(...cnt.slice(1),1);
+
+  el.innerHTML='';
+  for(let n=1;n<=45;n++){
+    const cell=document.createElement('div');
+    cell.className='stat-cell';
+
+    const snum=document.createElement('div');
+    snum.className='snum '+ballClass(n);
+    snum.style.cssText=`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:0.85rem;font-weight:800;`;
+    // apply color classes inline
+    const cls=ballClass(n);
+    const colorMap={b1:'linear-gradient(135deg,#f7e200,#e6b800)',b2:'linear-gradient(135deg,#69b4ff,#3385e6)',b3:'linear-gradient(135deg,#ff6b6b,#d93636)',b4:'linear-gradient(135deg,#aaa,#666)',b5:'linear-gradient(135deg,#6dde8a,#2bab50)'};
+    const textMap={b1:'#333',b2:'#fff',b3:'#fff',b4:'#fff',b5:'#fff'};
+    snum.style.background=colorMap[cls];
+    snum.style.color=textMap[cls];
+    snum.textContent=n;
+
+    const scount=document.createElement('div');
+    scount.className='scount';
+    scount.textContent=cnt[n]+'회';
+
+    const swrap=document.createElement('div');
+    swrap.className='sbar-wrap';
+    const sbar=document.createElement('div');
+    sbar.className='sbar';
+    const barColor=colorMap[cls].split(',')[1]?.replace(')','').trim()||'#fff';
+    sbar.style.cssText=`width:${Math.round((cnt[n]/maxCnt)*100)}%;background:${colorMap[cls]};`;
+    swrap.appendChild(sbar);
+
+    cell.appendChild(snum);
+    cell.appendChild(scount);
+    cell.appendChild(swrap);
+    el.appendChild(cell);
+  }
+}
+</script>
 </body>
 </html>
