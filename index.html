@@ -222,12 +222,75 @@
     .footer-links a:hover{color:var(--text);}
     .footer-copy{font-size:.75rem;color:var(--dim);}
 
-    @media(max-width:500px){
-      .ball{width:38px;height:38px;font-size:.88rem;}
-      .ball.sm{width:30px;height:30px;font-size:.76rem;}
-      .ball.xs{width:24px;height:24px;font-size:.65rem;}
-      header h1{font-size:1.7rem;}
+    /* ── 모바일 최적화 (≤600px) ── */
+    @media(max-width:600px){
+      /* 기본 여백 축소 */
+      main{padding:16px 10px 60px;}
+      .card{padding:14px 12px;}
+
+      /* 헤더 */
+      header h1{font-size:1.55rem;}
+      .tagline{font-size:.78rem;}
+
+      /* 탭: 줄바꿈 허용, 폰트 축소 */
+      .tabs{gap:2px;padding:4px;}
+      .tab{min-width:0;padding:7px 4px;font-size:0.7rem;white-space:normal;line-height:1.25;text-align:center;}
+
+      /* 볼 크기 */
+      .ball{width:36px;height:36px;font-size:.84rem;}
+      .ball.sm{width:28px;height:28px;font-size:.72rem;}
+      .ball.xs{width:25px;height:25px;font-size:.66rem;}
+
+      /* pick-row: 당첨뱃지 줄 분리로 볼 1개 떨어짐 방지 */
+      .pick-row{row-gap:5px;}
+      .prize-badge{width:100%;text-align:right;margin-left:0;margin-top:2px;font-size:.72rem;}
+
+      /* 번호 생성 week-bar */
+      .week-bar{flex-direction:column;align-items:flex-start;gap:6px;}
+      .week-bar input[type=date]{width:100%;}
+      .week-bar .gen-btn{width:100%;margin:0;}
+
+      /* gen-btn 폰트 조정 */
+      .gen-btn{font-size:.92rem;letter-spacing:0;}
+
+      /* 당첨번호 입력 칸 */
+      .win-input-row{gap:5px;}
+      .win-input-row input{width:40px;height:40px;font-size:.88rem;}
+
+      /* 결과 볼 행: 줄바꿈 되어도 번호들이 함께 유지되도록 */
+      .result-nums{gap:4px;}
+      .result-meta{gap:4px;}
+      .result-round{font-size:.76rem;}
+      .result-date{font-size:.71rem;}
+      .result-jackpot{font-size:.71rem;}
+
+      /* smart pick-row */
+      .smart-pick-row{row-gap:5px;}
+
+      /* 통계 그리드 */
+      .stats-grid{grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:5px;}
+
+      /* 피쳐 그리드 2열 */
       .feature-grid{grid-template-columns:1fr 1fr;}
+
+      /* info 그리드 1열 */
+      .info-grid{grid-template-columns:1fr;}
+
+      /* 국가카드 */
+      .country-card{padding:14px 12px;}
+      .country-flag{font-size:1.4rem;}
+
+      /* 기간/전략 버튼 */
+      .period-btn{font-size:.78rem;padding:8px 4px;min-width:0;}
+      .strategy-btn{font-size:.74rem;padding:7px 4px;min-width:0;}
+
+      /* 번호 추가 버튼 모바일: 전체 너비 */
+      .add-pick-btn{width:100%!important;}
+
+      /* 네비 */
+      nav{padding:10px 12px;}
+      .nav-links{gap:12px;}
+      .nav-links a{font-size:.76rem;}
     }
   </style>
 </head>
@@ -280,7 +343,7 @@
     <div class="week-bar">
       <label for="weekDate">추첨 주차</label>
       <input type="date" id="weekDate"/>
-      <button class="gen-btn" style="margin:0;width:auto;padding:8px 18px;font-size:.86rem;" onclick="addPick()">+ 번호 추가 (최대5)</button>
+      <button class="gen-btn add-pick-btn" style="margin:0;width:auto;padding:8px 18px;font-size:.86rem;" onclick="addPick()">+ 번호 추가 (최대5)</button>
     </div>
     <div class="card">
       <div class="card-title">이번 주 추천 번호</div>
